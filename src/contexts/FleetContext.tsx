@@ -49,6 +49,7 @@ export const FleetProvider: React.FC<{children: ReactNode}> = ({ children }) => 
     
     try {
       const status: FleetStatus = await api.getFleetStatus();
+      // Now we can be sure that status has all the required properties because the adapter ensures it
       setActiveRobots(status.active_robots);
       setInactiveRobots(status.inactive_robots);
       setTotalAreaCovered(status.total_area_covered);

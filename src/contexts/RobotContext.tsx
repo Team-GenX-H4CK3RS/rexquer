@@ -42,6 +42,7 @@ export const RobotProvider: React.FC<{children: ReactNode}> = ({ children }) => 
     
     try {
       const details: RobotDetails = await api.getRobotDetails(selectedRobotId);
+      // Now we can be sure that details has all the required properties because the adapter ensures it
       setRobotDetails(details);
     } catch (err) {
       setError('Failed to fetch robot details. Please try again.');
