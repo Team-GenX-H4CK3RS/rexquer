@@ -1,5 +1,6 @@
 
 import { Robot } from './api';
+import { adaptFleetData, adaptRobotDetails } from './adapters';
 
 const mockRobots: Robot[] = [
   {
@@ -114,14 +115,16 @@ class MockFleetAPI {
           battery_levels[robot.id] = robot.battery;
         });
         
-        resolve({
+        const rawData = {
           active_robots: mockRobots.filter(r => r.status === 'active').length,
           inactive_robots: mockRobots.filter(r => r.status !== 'active').length,
           total_area_covered: 1250,
           battery_levels,
           robots: mockRobots,
           constraints: ['Limited Communication', 'Sensor Failures & Redundancy']
-        });
+        };
+        
+        resolve(adaptFleetData(rawData));
       }, 800);
     });
   }
@@ -135,7 +138,7 @@ class MockFleetAPI {
           return;
         }
         
-        resolve({
+        const rawData = {
           ...robot,
           coverage_area: Math.floor(Math.random() * 100) + 50,
           uptime: Math.floor(Math.random() * 120) + 10,
@@ -157,7 +160,9 @@ class MockFleetAPI {
             temperature: (Math.random() * 5 + 20).toFixed(1),
             crop_health: Math.floor(Math.random() * 20) + 75
           }))
-        });
+        };
+        
+        resolve(adaptRobotDetails(rawData));
       }, 600);
     });
   }

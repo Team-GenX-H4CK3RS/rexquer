@@ -3,7 +3,7 @@ import React from 'react';
 import { useFleet } from '../contexts/FleetContext';
 import { Robot } from '../services/api';
 import { Badge } from "@/components/ui/badge";
-import { Battery, AlertTriangle, Zap, Tool, Pause } from 'lucide-react';
+import { Battery, AlertTriangle, Zap, Wrench, Pause } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 interface RobotListProps {
@@ -22,7 +22,7 @@ const RobotList: React.FC<RobotListProps> = ({ robots }) => {
       case 'charging':
         return <Battery size={16} className="text-agri-blue" />;
       case 'maintenance':
-        return <Tool size={16} className="text-agri-yellow" />;
+        return <Wrench size={16} className="text-agri-yellow" />;
       default:
         return <AlertTriangle size={16} className="text-agri-red" />;
     }

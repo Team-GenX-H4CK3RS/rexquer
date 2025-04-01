@@ -1,10 +1,12 @@
 
+import { adaptFleetData, adaptRobotDetails } from './adapters';
+
 interface SessionResponse {
   session_id: string;
   message: string;
 }
 
-interface FleetStatus {
+export interface FleetStatus {
   active_robots: number;
   inactive_robots: number;
   total_area_covered: number;
@@ -37,7 +39,7 @@ export interface Robot {
   error_logs?: string[];
 }
 
-interface RobotDetails extends Robot {
+export interface RobotDetails extends Robot {
   coverage_area: number;
   uptime: number;
   maintenance_history: {
@@ -104,7 +106,8 @@ class FleetAPI {
         throw new Error(`Failed to get fleet status: ${response.status}`);
       }
       
-      return await response.json();
+      const rawData = await response.json();
+      return adaptFleetData(rawData);
     } catch (error) {
       console.error('Error getting fleet status:', error);
       throw error;
@@ -123,7 +126,8 @@ class FleetAPI {
         throw new Error(`Failed to get robot details: ${response.status}`);
       }
       
-      return await response.json();
+      const rawData = await response.json();
+      return adaptRobotDetails(rawData);
     } catch (error) {
       console.error('Error getting robot details:', error);
       throw error;
