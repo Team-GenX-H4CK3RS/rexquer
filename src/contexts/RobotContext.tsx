@@ -1,3 +1,4 @@
+
 import React, {
   createContext,
   useContext,
@@ -5,7 +6,7 @@ import React, {
   useEffect,
   ReactNode,
 } from "react";
-import { fleetAPI, RobotDetails } from "../services/api";
+import { fleetAPI, RobotDetails, MoveDirection } from "../services/api";
 import { useFleet } from "./FleetContext";
 
 const api = fleetAPI;
@@ -15,6 +16,7 @@ interface RobotContextType {
   isLoading: boolean;
   error: string | null;
   refreshRobotDetails: () => Promise<void>;
+  moveRobot: (direction: MoveDirection) => Promise<void>;
 }
 
 const RobotContext = createContext<RobotContextType | null>(null);
@@ -30,7 +32,7 @@ export const useRobot = () => {
 export const RobotProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
-  const { selectedRobotId } = useFleet();
+  const { selectedRobotId, moveRobot: moveFleetRobot } = useFleet();
   const [robotDetails, setRobotDetails] = useState<RobotDetails | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,6 +58,22 @@ export const RobotProvider: React.FC<{ children: ReactNode }> = ({
     }
   };
 
+  const moveRobot = async (direction: MoveDirection) => {
+    if (!selectedRobotId) {
+      setError("No robot selected for movement");
+      return;
+    }
+    
+    try {
+      await moveFleetRobot(selectedRobotId, direction);
+      // Refresh robot details to reflect the new position
+      await refreshRobotDetails();
+    } catch (err) {
+      setError("Failed to move robot. Please try again.");
+      console.error("Error moving robot:", err);
+    }
+  };
+
   useEffect(() => {
     refreshRobotDetails();
   }, [selectedRobotId]);
@@ -67,6 +85,7 @@ export const RobotProvider: React.FC<{ children: ReactNode }> = ({
         isLoading,
         error,
         refreshRobotDetails,
+        moveRobot,
       }}
     >
       {children}

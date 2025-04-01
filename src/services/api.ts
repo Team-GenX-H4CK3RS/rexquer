@@ -1,3 +1,4 @@
+
 import { adaptFleetData, adaptRobotDetails } from "./adapters";
 
 interface SessionResponse {
@@ -52,6 +53,17 @@ export interface RobotDetails extends Robot {
     temperature: number;
     soil_ph: number;
   }[];
+}
+
+export type MoveDirection = 'forward' | 'backward' | 'left' | 'right' | 'stop';
+
+export interface MoveResponse {
+  success: boolean;
+  message: string;
+  new_position?: {
+    x: number;
+    y: number;
+  };
 }
 
 const API_BASE_URL = "http://172.16.45.55:5000/api";
@@ -180,6 +192,42 @@ class FleetAPI {
       return await response.json();
     } catch (error) {
       console.error("Error assigning task:", error);
+      throw error;
+    }
+  }
+
+  async moveRobot(
+    robotId: string,
+    direction: MoveDirection
+  ): Promise<MoveResponse> {
+    if (!this.sessionId) {
+      await this.startSession();
+    }
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/rover/${robotId}/move?session_id=${this.sessionId}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ direction }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to move robot: ${response.status}`);
+      }
+
+      const result = await response.json();
+      return {
+        success: result.success || false,
+        message: result.message || "Move command processed",
+        new_position: result.new_position,
+      };
+    } catch (error) {
+      console.error(`Error moving robot ${robotId}:`, error);
       throw error;
     }
   }

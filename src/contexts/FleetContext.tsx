@@ -1,3 +1,4 @@
+
 import React, {
   createContext,
   useContext,
@@ -5,7 +6,7 @@ import React, {
   useEffect,
   ReactNode,
 } from "react";
-import { Robot, fleetAPI, FleetStatus } from "../services/api";
+import { Robot, fleetAPI, FleetStatus, MoveDirection } from "../services/api";
 
 const api = fleetAPI;
 
@@ -22,6 +23,7 @@ interface FleetContextType {
   selectedRobotId: string | null;
   setSelectedRobotId: (id: string | null) => void;
   assignTaskToRobot: (robotId: string, task: string) => Promise<void>;
+  moveRobot: (robotId: string, direction: MoveDirection) => Promise<void>;
 }
 
 const FleetContext = createContext<FleetContextType | null>(null);
@@ -81,6 +83,17 @@ export const FleetProvider: React.FC<{ children: ReactNode }> = ({
     }
   };
 
+  const moveRobot = async (robotId: string, direction: MoveDirection) => {
+    try {
+      await api.moveRobot(robotId, direction);
+      // Refresh fleet status to get updated data after movement
+      await refreshFleetStatus();
+    } catch (err) {
+      console.error("Error moving robot:", err);
+      throw err;
+    }
+  };
+
   useEffect(() => {
     refreshFleetStatus();
 
@@ -105,6 +118,7 @@ export const FleetProvider: React.FC<{ children: ReactNode }> = ({
         selectedRobotId,
         setSelectedRobotId,
         assignTaskToRobot,
+        moveRobot,
       }}
     >
       {children}
