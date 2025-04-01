@@ -1,0 +1,159 @@
+
+interface SessionResponse {
+  session_id: string;
+  message: string;
+}
+
+interface FleetStatus {
+  active_robots: number;
+  inactive_robots: number;
+  total_area_covered: number;
+  battery_levels: {
+    [key: string]: number;
+  };
+  robots: Robot[];
+  constraints: string[];
+}
+
+export interface Robot {
+  id: string;
+  name: string;
+  status: 'active' | 'inactive' | 'charging' | 'maintenance';
+  battery: number;
+  position: {
+    x: number;
+    y: number;
+  };
+  sensors: {
+    soil_moisture: number;
+    temperature: number;
+    crop_health: number;
+  };
+  tasks: {
+    current: string;
+    queue: string[];
+  };
+  last_update: string;
+  error_logs?: string[];
+}
+
+interface RobotDetails extends Robot {
+  coverage_area: number;
+  uptime: number;
+  maintenance_history: {
+    date: string;
+    issue: string;
+    resolution: string;
+  }[];
+  sensor_history: {
+    timestamp: string;
+    soil_moisture: number;
+    temperature: number;
+    crop_health: number;
+  }[];
+}
+
+const API_BASE_URL = 'https://fleetbots-production.up.railway.app/api';
+
+class FleetAPI {
+  private sessionId: string | null = null;
+
+  constructor() {
+    // Try to load session from localStorage
+    const savedSession = localStorage.getItem('fleet_session_id');
+    if (savedSession) {
+      this.sessionId = savedSession;
+    }
+  }
+
+  async startSession(): Promise<string> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/session/start`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to start session: ${response.status}`);
+      }
+
+      const data: SessionResponse = await response.json();
+      this.sessionId = data.session_id;
+      
+      // Save session to localStorage
+      localStorage.setItem('fleet_session_id', data.session_id);
+      
+      return data.session_id;
+    } catch (error) {
+      console.error('Error starting session:', error);
+      throw error;
+    }
+  }
+
+  async getFleetStatus(): Promise<FleetStatus> {
+    if (!this.sessionId) {
+      await this.startSession();
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/fleet/status?session_id=${this.sessionId}`);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to get fleet status: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error getting fleet status:', error);
+      throw error;
+    }
+  }
+
+  async getRobotDetails(robotId: string): Promise<RobotDetails> {
+    if (!this.sessionId) {
+      await this.startSession();
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/robot/${robotId}?session_id=${this.sessionId}`);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to get robot details: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error getting robot details:', error);
+      throw error;
+    }
+  }
+
+  async assignTask(robotId: string, task: string): Promise<{success: boolean, message: string}> {
+    if (!this.sessionId) {
+      await this.startSession();
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/robot/${robotId}/task?session_id=${this.sessionId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ task }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to assign task: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error assigning task:', error);
+      throw error;
+    }
+  }
+}
+
+export const fleetAPI = new FleetAPI();
