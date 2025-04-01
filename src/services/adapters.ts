@@ -25,7 +25,7 @@ export const adaptFleetData = (data: SFleetStatus): FleetStatus => {
         tasks: { current: v.task ?? "", queue: [] },
         id: v.name,
         position: { x: v.coordinates[0], y: v.coordinates[1] },
-        sensors: { soil_moisture: 0, temperature: 0, crop_health: 0 },
+        sensors: { soil_moisture: 0, temperature: 0, soil_ph: 0 },
         last_update: "",
       };
     }),
@@ -35,19 +35,24 @@ export const adaptFleetData = (data: SFleetStatus): FleetStatus => {
 
 // This adapter ensures that robot details from the API match our expected types
 export const adaptRobotDetails = (data: any): RobotDetails => {
+  console.log(data);
+
   return {
-    id: data?.id ?? "",
+    id: data?.rover_id ?? "",
     name: data?.name ?? "",
     status: data?.status ?? "inactive",
-    battery: data?.battery ?? 0,
-    position: data?.position ?? { x: 0, y: 0 },
-    sensors: data?.sensors ?? {
-      soil_moisture: 0,
-      temperature: 0,
-      crop_health: 0,
+    battery: data?.battery_level ?? 0,
+    position: { x: data.coordinates[0], y: data.coordinates[1] },
+    sensors: {
+      soil_moisture: data.soil_moisture,
+      temperature: data.temperature,
+      soil_ph: data.soil_pH,
     },
-    tasks: data?.tasks ?? { current: "", queue: [] },
-    last_update: data?.last_update ?? new Date().toISOString(),
+    tasks: { current: data.task ?? "", queue: [] },
+    last_update: (data.timestamp
+      ? new Date(data.timestamp)
+      : new Date()
+    ).toISOString(),
     coverage_area: data?.coverage_area ?? 0,
     uptime: data?.uptime ?? 0,
     maintenance_history: Array.isArray(data?.maintenance_history)

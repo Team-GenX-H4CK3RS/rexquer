@@ -28,7 +28,7 @@ export interface Robot {
   sensors: {
     soil_moisture: number;
     temperature: number;
-    crop_health: number;
+    soil_ph: number;
   };
   tasks: {
     current: string;
@@ -50,7 +50,7 @@ export interface RobotDetails extends Robot {
     timestamp: string;
     soil_moisture: number;
     temperature: number;
-    crop_health: number;
+    soil_ph: number;
   }[];
 }
 
@@ -134,15 +134,19 @@ class FleetAPI {
 
     try {
       const response = await fetch(
-        `${API_BASE_URL}/robot/${robotId}?session_id=${this.sessionId}`
+        `${API_BASE_URL}/rover/${robotId}/status?session_id=${this.sessionId}`
+      );
+      const sensorDataResponse = await fetch(
+        `${API_BASE_URL}/rover/${robotId}/sensor-data?session_id=${this.sessionId}`
       );
 
-      if (!response.ok) {
+      if (!response.ok || !sensorDataResponse.ok) {
         throw new Error(`Failed to get robot details: ${response.status}`);
       }
 
       const rawData = await response.json();
-      return adaptRobotDetails(rawData);
+      const sensorRawData = await sensorDataResponse.json();
+      return adaptRobotDetails({ ...rawData, ...sensorRawData });
     } catch (error) {
       console.error("Error getting robot details:", error);
       throw error;
@@ -159,7 +163,7 @@ class FleetAPI {
 
     try {
       const response = await fetch(
-        `${API_BASE_URL}/robot/${robotId}/task?session_id=${this.sessionId}`,
+        `${API_BASE_URL}/rover/${robotId}/task?session_id=${this.sessionId}`,
         {
           method: "POST",
           headers: {
