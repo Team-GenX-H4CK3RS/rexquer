@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Robot, fleetAPI } from '../services/api';
+import { Robot, fleetAPI, FleetStatus } from '../services/api';
 import { mockFleetAPI } from '../services/mockApi';
 
 // Set to true to use mock data, false to use the real API
@@ -48,7 +48,7 @@ export const FleetProvider: React.FC<{children: ReactNode}> = ({ children }) => 
     setError(null);
     
     try {
-      const status = await api.getFleetStatus();
+      const status: FleetStatus = await api.getFleetStatus();
       setActiveRobots(status.active_robots);
       setInactiveRobots(status.inactive_robots);
       setTotalAreaCovered(status.total_area_covered);

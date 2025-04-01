@@ -1,47 +1,12 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { fleetAPI } from '../services/api';
+import { fleetAPI, RobotDetails } from '../services/api';
 import { mockFleetAPI } from '../services/mockApi';
 import { useFleet } from './FleetContext';
 
 // Set to true to use mock data, false to use the real API
 const USE_MOCK_API = true;
 const api = USE_MOCK_API ? mockFleetAPI : fleetAPI;
-
-interface RobotDetails {
-  id: string;
-  name: string;
-  status: 'active' | 'inactive' | 'charging' | 'maintenance';
-  battery: number;
-  position: {
-    x: number;
-    y: number;
-  };
-  sensors: {
-    soil_moisture: number;
-    temperature: number;
-    crop_health: number;
-  };
-  tasks: {
-    current: string;
-    queue: string[];
-  };
-  last_update: string;
-  coverage_area: number;
-  uptime: number;
-  maintenance_history: {
-    date: string;
-    issue: string;
-    resolution: string;
-  }[];
-  sensor_history: {
-    timestamp: string;
-    soil_moisture: number;
-    temperature: number;
-    crop_health: number;
-  }[];
-  error_logs?: string[];
-}
 
 interface RobotContextType {
   robotDetails: RobotDetails | null;
@@ -76,7 +41,7 @@ export const RobotProvider: React.FC<{children: ReactNode}> = ({ children }) => 
     setError(null);
     
     try {
-      const details = await api.getRobotDetails(selectedRobotId);
+      const details: RobotDetails = await api.getRobotDetails(selectedRobotId);
       setRobotDetails(details);
     } catch (err) {
       setError('Failed to fetch robot details. Please try again.');
