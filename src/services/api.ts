@@ -1,5 +1,4 @@
-
-import { adaptFleetData, adaptRobotDetails } from './adapters';
+import { adaptFleetData, adaptRobotDetails } from "./adapters";
 
 interface SessionResponse {
   session_id: string;
@@ -20,7 +19,7 @@ export interface FleetStatus {
 export interface Robot {
   id: string;
   name: string;
-  status: 'active' | 'inactive' | 'charging' | 'maintenance';
+  status: string;
   battery: number;
   position: {
     x: number;
@@ -55,14 +54,14 @@ export interface RobotDetails extends Robot {
   }[];
 }
 
-const API_BASE_URL = 'https://fleetbots-production.up.railway.app/api';
+const API_BASE_URL = "http://172.16.45.55:5000/api";
 
 class FleetAPI {
   private sessionId: string | null = null;
 
   constructor() {
     // Try to load session from localStorage
-    const savedSession = localStorage.getItem('fleet_session_id');
+    const savedSession = localStorage.getItem("fleet_session_id");
     if (savedSession) {
       this.sessionId = savedSession;
     }
@@ -71,9 +70,9 @@ class FleetAPI {
   async startSession(): Promise<string> {
     try {
       const response = await fetch(`${API_BASE_URL}/session/start`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
       });
 
@@ -83,13 +82,13 @@ class FleetAPI {
 
       const data: SessionResponse = await response.json();
       this.sessionId = data.session_id;
-      
+
       // Save session to localStorage
-      localStorage.setItem('fleet_session_id', data.session_id);
-      
+      localStorage.setItem("fleet_session_id", data.session_id);
+
       return data.session_id;
     } catch (error) {
-      console.error('Error starting session:', error);
+      console.error("Error starting session:", error);
       throw error;
     }
   }
@@ -100,16 +99,30 @@ class FleetAPI {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/fleet/status?session_id=${this.sessionId}`);
-      
+      const response = await fetch(
+        `${API_BASE_URL}/fleet/status?session_id=${this.sessionId}`
+      );
+
       if (!response.ok) {
         throw new Error(`Failed to get fleet status: ${response.status}`);
       }
-      
+
       const rawData = await response.json();
-      return adaptFleetData(rawData);
+      const fleetData = adaptFleetData(rawData);
+      // const rawRobotData = [];
+
+      // for (const v of Object.entries(rawData)) {
+      //   const r = await fetch(
+      //     `${API_BASE_URL}/rover/${v[0]}/status?session_id=${this.sessionId}`
+      //   );
+      //   console.log(await r.json());
+
+      //   rawRobotData.push(await r.json());
+      // }
+
+      return fleetData;
     } catch (error) {
-      console.error('Error getting fleet status:', error);
+      console.error("Error getting fleet status:", error);
       throw error;
     }
   }
@@ -120,41 +133,49 @@ class FleetAPI {
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/robot/${robotId}?session_id=${this.sessionId}`);
-      
+      const response = await fetch(
+        `${API_BASE_URL}/robot/${robotId}?session_id=${this.sessionId}`
+      );
+
       if (!response.ok) {
         throw new Error(`Failed to get robot details: ${response.status}`);
       }
-      
+
       const rawData = await response.json();
       return adaptRobotDetails(rawData);
     } catch (error) {
-      console.error('Error getting robot details:', error);
+      console.error("Error getting robot details:", error);
       throw error;
     }
   }
 
-  async assignTask(robotId: string, task: string): Promise<{success: boolean, message: string}> {
+  async assignTask(
+    robotId: string,
+    task: string
+  ): Promise<{ success: boolean; message: string }> {
     if (!this.sessionId) {
       await this.startSession();
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/robot/${robotId}/task?session_id=${this.sessionId}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ task }),
-      });
-      
+      const response = await fetch(
+        `${API_BASE_URL}/robot/${robotId}/task?session_id=${this.sessionId}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ task }),
+        }
+      );
+
       if (!response.ok) {
         throw new Error(`Failed to assign task: ${response.status}`);
       }
-      
+
       return await response.json();
     } catch (error) {
-      console.error('Error assigning task:', error);
+      console.error("Error assigning task:", error);
       throw error;
     }
   }
