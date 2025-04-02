@@ -1,27 +1,29 @@
-
-import React from 'react';
-import { useFleet } from '../contexts/FleetContext';
-import { Robot } from '../services/api';
+import React from "react";
+import { Robot } from "../services/api";
 import { Badge } from "@/components/ui/badge";
-import { Battery, AlertTriangle, Zap, Wrench, Pause } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import { Battery, AlertTriangle, Zap, Wrench, Pause } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
 
 interface RobotListProps {
   robots: Robot[];
+  selectedRobotId: string | null;
+  setSelectedRobotId: any;
 }
 
-const RobotList: React.FC<RobotListProps> = ({ robots }) => {
-  const { selectedRobotId, setSelectedRobotId } = useFleet();
-
+const RobotList: React.FC<RobotListProps> = ({
+  robots,
+  selectedRobotId,
+  setSelectedRobotId,
+}) => {
   const getRobotStatusIcon = (status: string) => {
     switch (status) {
-      case 'active':
+      case "active":
         return <Zap size={16} className="text-agri-green" />;
-      case 'inactive':
+      case "inactive":
         return <Pause size={16} className="text-gray-500" />;
-      case 'charging':
+      case "charging":
         return <Battery size={16} className="text-agri-blue" />;
-      case 'maintenance':
+      case "maintenance":
         return <Wrench size={16} className="text-agri-yellow" />;
       default:
         return <AlertTriangle size={16} className="text-agri-red" />;
@@ -53,35 +55,22 @@ const RobotList: React.FC<RobotListProps> = ({ robots }) => {
           <div
             key={robot.id}
             className={`p-3 rounded-lg border cursor-pointer transition-all ${
-              selectedRobotId === robot.id 
-                ? 'bg-primary/10 border-primary' 
-                : 'hover:bg-muted/50'
+              selectedRobotId === robot.id
+                ? "bg-primary/10 border-primary"
+                : "hover:bg-muted/50"
             }`}
             onClick={() => setSelectedRobotId(robot.id)}
           >
-            <div className="flex justify-between items-start mb-2">
+            <div className="flex justify-between items-center">
               <div className="flex items-center gap-2">
                 {getRobotStatusIcon(robot.status)}
                 <span className="font-medium">{robot.name}</span>
               </div>
-              <Badge variant={robot.status === 'active' ? 'default' : 'outline'}>
+              <Badge
+                variant={robot.status === "active" ? "default" : "outline"}
+              >
                 {robot.status}
               </Badge>
-            </div>
-            
-            <div className="flex justify-between items-center text-sm">
-              <div className="flex items-center gap-1">
-                <div className={getBatteryClassName(robot.battery)}>
-                  {robot.battery}%
-                </div>
-              </div>
-              <div className="text-xs text-muted-foreground">
-                {getLastUpdateText(robot.last_update)}
-              </div>
-            </div>
-            
-            <div className="mt-2 text-xs truncate text-muted-foreground">
-              {robot.tasks.current}
             </div>
           </div>
         ))

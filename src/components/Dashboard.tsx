@@ -1,31 +1,84 @@
-
-import React from 'react';
-import { useFleet } from '../contexts/FleetContext';
-import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import React, { useEffect, useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { RefreshCw, AlertTriangle } from 'lucide-react';
-import FleetMap from './FleetMap';
-import RobotList from './RobotList';
-import RobotDetailPanel from './RobotDetailPanel';
+import { RefreshCw, AlertTriangle } from "lucide-react";
+import FleetMap from "./FleetMap";
+import RobotList from "./RobotList";
+import RobotDetailPanel from "./RobotDetailPanel";
+import {
+  Robot,
+  fleetAPI as api,
+  FleetStatus,
+  MoveDirection,
+} from "../services/api";
 
 const Dashboard: React.FC = () => {
-  const { 
-    isLoading, 
-    error, 
-    activeRobots, 
-    inactiveRobots, 
-    totalAreaCovered, 
-    batteryLevels,
-    robots,
-    constraints,
-    refreshFleetStatus,
-    selectedRobotId
-  } = useFleet();
-  
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [activeRobots, setActiveRobots] = useState(0);
+  const [inactiveRobots, setInactiveRobots] = useState(0);
+  const [totalAreaCovered, setTotalAreaCovered] = useState(0);
+  const [batteryLevels, setBatteryLevels] = useState<{ [key: string]: number }>(
+    {}
+  );
+  const [robots, setRobots] = useState<Robot[]>([]);
+  const [constraints, setConstraints] = useState<string[]>([]);
+  const [selectedRobotId, setSelectedRobotId] = useState<string | null>(null);
+
   const { toast } = useToast();
+  const refreshFleetStatus = async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const status: FleetStatus = await api.getFleetStatus();
+      // Now we can be sure that status has all the required properties because the adapter ensures it
+      setActiveRobots(status.active_robots);
+      setInactiveRobots(status.inactive_robots);
+      setTotalAreaCovered(status.total_area_covered);
+      setBatteryLevels(status.battery_levels);
+      setRobots(status.robots);
+      setConstraints(status.constraints);
+    } catch (err) {
+      setError("Failed to fetch fleet status. Please try again.");
+      console.error("Error fetching fleet status:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const assignTaskToRobot = async (robotId: string, task: string) => {
+    try {
+      await api.assignTask(robotId, task);
+      // Refresh fleet status to get updated data
+      await refreshFleetStatus();
+    } catch (err) {
+      console.error("Error assigning task:", err);
+      throw err;
+    }
+  };
+
+  const moveRobot = async (robotId: string, direction: MoveDirection) => {
+    try {
+      await api.moveRobot(robotId, direction);
+    } catch (err) {
+      console.error("Error moving robot:", err);
+      throw err;
+    }
+  };
+
+  useEffect(() => {
+    refreshFleetStatus();
+  }, []);
 
   const handleRefresh = async () => {
     try {
@@ -44,9 +97,12 @@ const Dashboard: React.FC = () => {
   };
 
   // Calculate average battery level
-  const avgBattery = robots.length > 0
-    ? Math.round(robots.reduce((sum, robot) => sum + robot.battery, 0) / robots.length)
-    : 0;
+  const avgBattery =
+    robots.length > 0
+      ? Math.round(
+          robots.reduce((sum, robot) => sum + robot.battery, 0) / robots.length
+        )
+      : 0;
 
   return (
     <div className="container mx-auto p-4">
@@ -58,7 +114,11 @@ const Dashboard: React.FC = () => {
               Monitor and control your autonomous SLAM-enabled robots
             </p>
           </div>
-          <Button onClick={handleRefresh} disabled={isLoading} className="flex gap-2 items-center">
+          <Button
+            onClick={handleRefresh}
+            disabled={isLoading}
+            className="flex gap-2 items-center"
+          >
             <RefreshCw size={16} className={isLoading ? "animate-spin" : ""} />
             {isLoading ? "Refreshing..." : "Refresh"}
           </Button>
@@ -78,7 +138,9 @@ const Dashboard: React.FC = () => {
               <CardDescription>Currently operational</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-4xl font-bold text-agri-green">{activeRobots}</div>
+              <div className="text-4xl font-bold text-agri-green">
+                {activeRobots}
+              </div>
               <div className="text-sm text-muted-foreground">
                 {inactiveRobots} inactive
               </div>
@@ -91,10 +153,10 @@ const Dashboard: React.FC = () => {
               <CardDescription>Total monitoring area</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-4xl font-bold text-agri-blue">{totalAreaCovered}</div>
-              <div className="text-sm text-muted-foreground">
-                Square meters
+              <div className="text-4xl font-bold text-agri-blue">
+                {totalAreaCovered}
               </div>
+              <div className="text-sm text-muted-foreground">Square meters</div>
             </CardContent>
           </Card>
 
@@ -105,37 +167,19 @@ const Dashboard: React.FC = () => {
             </CardHeader>
             <CardContent>
               <div className="text-4xl font-bold">
-                <span className={
-                  avgBattery > 70 ? "text-agri-green" : 
-                  avgBattery > 30 ? "text-agri-orange" : 
-                  "text-agri-red"
-                }>
+                <span
+                  className={
+                    avgBattery > 70
+                      ? "text-agri-green"
+                      : avgBattery > 30
+                      ? "text-agri-orange"
+                      : "text-agri-red"
+                  }
+                >
                   {avgBattery}%
                 </span>
               </div>
-              <Progress 
-                value={avgBattery} 
-                className="mt-2" 
-              />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle>Constraints</CardTitle>
-              <CardDescription>Active limitations</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {constraints.map((constraint, index) => (
-                  <div 
-                    key={index} 
-                    className="bg-secondary px-2 py-1 rounded-md text-xs"
-                  >
-                    {constraint}
-                  </div>
-                ))}
-              </div>
+              <Progress value={avgBattery} className="mt-2" />
             </CardContent>
           </Card>
         </div>
@@ -145,10 +189,15 @@ const Dashboard: React.FC = () => {
             <Card className="h-full">
               <CardHeader>
                 <CardTitle>Fleet Map</CardTitle>
-                <CardDescription>Real-time positions and status</CardDescription>
+                <CardDescription>
+                  Real-time positions and status
+                </CardDescription>
               </CardHeader>
               <CardContent className="h-[400px]">
-                <FleetMap robots={robots} />
+                <FleetMap
+                  robots={robots}
+                  onRobotSelected={setSelectedRobotId}
+                />
               </CardContent>
             </Card>
           </div>
@@ -159,7 +208,11 @@ const Dashboard: React.FC = () => {
                 <CardDescription>Status and quick access</CardDescription>
               </CardHeader>
               <CardContent>
-                <RobotList robots={robots} />
+                <RobotList
+                  robots={robots}
+                  selectedRobotId={selectedRobotId}
+                  setSelectedRobotId={setSelectedRobotId}
+                />
               </CardContent>
             </Card>
           </div>
@@ -169,10 +222,16 @@ const Dashboard: React.FC = () => {
           <Card>
             <CardHeader>
               <CardTitle>Robot Details</CardTitle>
-              <CardDescription>Detailed information and controls</CardDescription>
+              <CardDescription>
+                Detailed information and controls
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <RobotDetailPanel />
+              <RobotDetailPanel
+                selectedRobotId={selectedRobotId}
+                assignTaskToRobot={assignTaskToRobot}
+                setSelectedRobotId={setSelectedRobotId}
+              />
             </CardContent>
           </Card>
         )}

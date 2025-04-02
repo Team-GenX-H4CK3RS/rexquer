@@ -1,6 +1,4 @@
-import React, { useState } from "react";
-import { useRobot } from "../contexts/RobotContext";
-import { useFleet } from "../contexts/FleetContext";
+import React, { useEffect, useMemo, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { fleetAPI as api, RobotDetails, MoveDirection } from "../services/api";
 import {
   RefreshCw,
   Battery,
@@ -25,13 +24,59 @@ import {
 import { formatDistanceToNow, format } from "date-fns";
 import TaskQueueDisplay from "./TaskQueueDisplay";
 import SensorReadings from "./SensorReadings";
+import DigitalJoystick from "./DigitalJoystick";
 
-const RobotDetailPanel: React.FC = () => {
-  const { robotDetails, isLoading, error, refreshRobotDetails } = useRobot();
-  const { setSelectedRobotId, assignTaskToRobot } = useFleet();
+const RobotDetailPanel = ({
+  selectedRobotId,
+  assignTaskToRobot,
+  setSelectedRobotId,
+}: {
+  selectedRobotId: string;
+  assignTaskToRobot: any;
+  setSelectedRobotId: any;
+}) => {
+  const [robotDetails, setRobotDetails] = useState<RobotDetails | null>(null);
   const [newTask, setNewTask] = useState("");
   const [isAssigning, setIsAssigning] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+
+  const refreshRobotDetails = async () => {
+    if (!selectedRobotId) {
+      setRobotDetails(null);
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const details: RobotDetails = await api.getRobotDetails(selectedRobotId);
+      setRobotDetails(details);
+    } catch (err) {
+      setError("Failed to fetch robot details. Please try again.");
+      console.error("Error fetching robot details:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const moveRobot = async (direction: MoveDirection) => {
+    if (!selectedRobotId) {
+      setError("No robot selected for movement");
+      return;
+    }
+
+    try {
+      await api.moveRobot(selectedRobotId, direction);
+      // Refresh robot details to reflect the new position
+      await refreshRobotDetails();
+    } catch (err) {
+      setError("Failed to move robot. Please try again.");
+      console.error("Error moving robot:", err);
+    }
+  };
 
   const handleRefresh = async () => {
     await refreshRobotDetails();
@@ -62,6 +107,10 @@ const RobotDetailPanel: React.FC = () => {
       setIsAssigning(false);
     }
   };
+
+  useEffect(() => {
+    refreshRobotDetails();
+  }, []);
 
   if (isLoading) {
     return (
@@ -95,9 +144,12 @@ const RobotDetailPanel: React.FC = () => {
       return "Unknown";
     }
   };
-
   return (
     <div>
+      <DigitalJoystick
+        onDirectionChange={async (e) => await moveRobot(e)}
+        size={250}
+      />
       <div className="flex justify-between items-start mb-4">
         <div>
           <div className="flex items-center gap-2">
@@ -145,31 +197,12 @@ const RobotDetailPanel: React.FC = () => {
             </div>
           </div>
         </div>
-
-        <div className="flex items-center gap-2 bg-muted/20 p-3 rounded-md">
-          <Clock className="text-muted-foreground" />
-          <div>
-            <div className="text-sm font-medium">Last Update</div>
-            <div className="text-lg font-bold">
-              {getLastUpdateText(robotDetails.last_update)}
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 bg-muted/20 p-3 rounded-md">
-          <Activity className="text-agri-green" />
-          <div>
-            <div className="text-sm font-medium">Uptime</div>
-            <div className="text-lg font-bold">{robotDetails.uptime} hours</div>
-          </div>
-        </div>
       </div>
 
       <Tabs defaultValue="sensors">
         <TabsList className="mb-4">
           <TabsTrigger value="sensors">Sensor Data</TabsTrigger>
           <TabsTrigger value="tasks">Tasks</TabsTrigger>
-          <TabsTrigger value="maintenance">Maintenance</TabsTrigger>
         </TabsList>
 
         <TabsContent value="sensors">
@@ -241,20 +274,8 @@ const RobotDetailPanel: React.FC = () => {
                   placeholder="Enter task description"
                   value={newTask}
                   onChange={(e) => setNewTask(e.target.value)}
-                  disabled={
-                    robotDetails.status !== "active" &&
-                    robotDetails.status !== "charging"
-                  }
                 />
-                <Button
-                  onClick={handleAssignTask}
-                  disabled={
-                    !newTask.trim() ||
-                    isAssigning ||
-                    (robotDetails.status !== "active" &&
-                      robotDetails.status !== "charging")
-                  }
-                >
+                <Button onClick={handleAssignTask}>
                   {isAssigning ? "Assigning..." : "Assign"}
                 </Button>
               </div>
@@ -266,108 +287,6 @@ const RobotDetailPanel: React.FC = () => {
                   </p>
                 )}
             </div>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="maintenance">
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-medium mb-3">System Status</h3>
-              <div className="bg-muted/20 p-4 rounded-md">
-                <div className="flex items-center gap-2 mb-4">
-                  <div
-                    className={`w-3 h-3 rounded-full ${
-                      robotDetails.status === "active"
-                        ? "bg-agri-green"
-                        : robotDetails.status === "maintenance"
-                        ? "bg-agri-yellow"
-                        : robotDetails.status === "charging"
-                        ? "bg-agri-blue"
-                        : "bg-agri-red"
-                    }`}
-                  ></div>
-                  <span className="font-medium">
-                    {robotDetails.status === "active"
-                      ? "System Operational"
-                      : robotDetails.status === "maintenance"
-                      ? "Under Maintenance"
-                      : robotDetails.status === "charging"
-                      ? "Charging"
-                      : "System Offline"}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2 mb-2">
-                  <BatteryCharging size={16} />
-                  <span className="font-medium">Power System</span>
-                  <Badge
-                    variant={
-                      robotDetails.battery > 20 ? "outline" : "destructive"
-                    }
-                  >
-                    {robotDetails.battery > 70
-                      ? "Optimal"
-                      : robotDetails.battery > 30
-                      ? "Good"
-                      : robotDetails.battery > 10
-                      ? "Low"
-                      : "Critical"}
-                  </Badge>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Activity size={16} />
-                  <span className="font-medium">Sensor Systems</span>
-                  <Badge variant="outline">
-                    {robotDetails.sensors.soil_moisture > 0 &&
-                    robotDetails.sensors.temperature > 0 &&
-                    robotDetails.sensors.soil_ph > 0
-                      ? "All Functioning"
-                      : "Partial Failure"}
-                  </Badge>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <h3 className="text-lg font-medium mb-3">Maintenance History</h3>
-              <div className="space-y-4">
-                {robotDetails.maintenance_history.length === 0 ? (
-                  <div className="text-center text-muted-foreground py-4">
-                    No maintenance records available
-                  </div>
-                ) : (
-                  robotDetails.maintenance_history.map((record, index) => (
-                    <div key={index} className="border rounded-md p-4">
-                      <div className="flex justify-between mb-1">
-                        <span className="font-medium">{record.issue}</span>
-                        <span className="text-sm text-muted-foreground">
-                          {format(new Date(record.date), "PPP")}
-                        </span>
-                      </div>
-                      <p className="text-sm">{record.resolution}</p>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
-            {robotDetails.error_logs && robotDetails.error_logs.length > 0 && (
-              <div>
-                <h3 className="text-lg font-medium mb-3">Error Logs</h3>
-                <div className="bg-destructive/10 p-4 rounded-md space-y-2">
-                  {robotDetails.error_logs.map((log, index) => (
-                    <div key={index} className="text-sm">
-                      <AlertTriangle
-                        size={14}
-                        className="inline mr-2 text-destructive"
-                      />
-                      {log}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         </TabsContent>
       </Tabs>

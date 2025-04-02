@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { useFleet } from "../contexts/FleetContext";
 import { Robot } from "../services/api";
 import { Battery, Thermometer, Droplets, Heart } from "lucide-react";
 import {
@@ -11,6 +10,7 @@ import {
 
 interface FleetMapProps {
   robots: Robot[];
+  onRobotSelected: (id: string) => void;
 }
 
 const statusColors = {
@@ -20,8 +20,8 @@ const statusColors = {
   maintenance: "#FFC107", // Yellow
 };
 
-const FleetMap: React.FC<FleetMapProps> = ({ robots }) => {
-  const { setSelectedRobotId, selectedRobotId } = useFleet();
+const FleetMap: React.FC<FleetMapProps> = ({ robots, onRobotSelected }) => {
+  const [selectedRobotId, setSelectedRobotId] = useState<string>();
   const [mapDimensions, setMapDimensions] = useState({
     width: 600,
     height: 400,
@@ -109,7 +109,10 @@ const FleetMap: React.FC<FleetMapProps> = ({ robots }) => {
                       isSelected ? "scale(1.1)" : ""
                     }`,
                   }}
-                  onClick={() => setSelectedRobotId(robot.id)}
+                  onClick={() => {
+                    setSelectedRobotId(robot.id);
+                    onRobotSelected(robot.id);
+                  }}
                 >
                   <div
                     className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${

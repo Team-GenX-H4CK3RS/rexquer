@@ -1,4 +1,3 @@
-
 import { adaptFleetData, adaptRobotDetails } from "./adapters";
 
 interface SessionResponse {
@@ -55,7 +54,7 @@ export interface RobotDetails extends Robot {
   }[];
 }
 
-export type MoveDirection = 'forward' | 'backward' | 'left' | 'right' | 'stop';
+export type MoveDirection = "forward" | "backward" | "left" | "right" | "stop";
 
 export interface MoveResponse {
   success: boolean;
@@ -121,16 +120,6 @@ class FleetAPI {
 
       const rawData = await response.json();
       const fleetData = adaptFleetData(rawData);
-      // const rawRobotData = [];
-
-      // for (const v of Object.entries(rawData)) {
-      //   const r = await fetch(
-      //     `${API_BASE_URL}/rover/${v[0]}/status?session_id=${this.sessionId}`
-      //   );
-      //   console.log(await r.json());
-
-      //   rawRobotData.push(await r.json());
-      // }
 
       return fleetData;
     } catch (error) {
@@ -174,8 +163,12 @@ class FleetAPI {
     }
 
     try {
+      const params = new URLSearchParams({
+        session_id: this.sessionId,
+        task: task,
+      });
       const response = await fetch(
-        `${API_BASE_URL}/rover/${robotId}/task?session_id=${this.sessionId}`,
+        `${API_BASE_URL}/rover/${robotId}/task?${params}`,
         {
           method: "POST",
           headers: {
@@ -204,15 +197,16 @@ class FleetAPI {
       await this.startSession();
     }
 
+    const to = direction === "stop" ? "reset" : "move";
+
     try {
       const response = await fetch(
-        `${API_BASE_URL}/rover/${robotId}/move?session_id=${this.sessionId}`,
+        `${API_BASE_URL}/rover/${robotId}/${to}?session_id=${this.sessionId}&direction=${direction}`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ direction }),
         }
       );
 

@@ -1,4 +1,3 @@
-
 import React, {
   createContext,
   useContext,
@@ -86,8 +85,6 @@ export const FleetProvider: React.FC<{ children: ReactNode }> = ({
   const moveRobot = async (robotId: string, direction: MoveDirection) => {
     try {
       await api.moveRobot(robotId, direction);
-      // Refresh fleet status to get updated data after movement
-      await refreshFleetStatus();
     } catch (err) {
       console.error("Error moving robot:", err);
       throw err;
@@ -96,11 +93,6 @@ export const FleetProvider: React.FC<{ children: ReactNode }> = ({
 
   useEffect(() => {
     refreshFleetStatus();
-
-    // Set up periodic refresh every 30 seconds
-    const intervalId = setInterval(refreshFleetStatus, 30000);
-
-    return () => clearInterval(intervalId);
   }, []);
 
   return (

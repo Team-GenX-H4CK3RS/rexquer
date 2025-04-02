@@ -1,4 +1,3 @@
-
 import React, {
   createContext,
   useContext,
@@ -63,7 +62,7 @@ export const RobotProvider: React.FC<{ children: ReactNode }> = ({
       setError("No robot selected for movement");
       return;
     }
-    
+
     try {
       await moveFleetRobot(selectedRobotId, direction);
       // Refresh robot details to reflect the new position
